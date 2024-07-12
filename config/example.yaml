@@ -1,0 +1,24 @@
+/**:
+  ros__parameters:
+    publish_tf: true
+    odometry_frame: odom
+    base_link_frame: base_link
+
+    ## optional parameters
+    pointcloud_topics:
+    - pointcloud/ror
+    - pointcloud_inflate
+    - pointcloud
+    imu_topics:
+    - S0/imu
+    odometry_topics:
+    - S0/vio_odom
+    image_topics:
+    - S0/camd
+    - S0/stereo1_l
+    - S0/stereo2_r
+    disparity_topics:
+    - S0/stereo1_l/disparity
+    - S0/stereo2_r/disparity
+    - S0/stereo1_l/filtered/disparity
+    - S0/stereo2_r/filtered/disparity

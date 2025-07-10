@@ -192,98 +192,12 @@ vkc::ReceiverStatus vkc::DisparityReceiver::handle(const vkc::Message<vkc::Share
     return vkc::ReceiverStatus::Open;
 }
 
-vkc::ReceiverStatus vkc::PointCloudReceiver::handle(const vkc::Message<vkc::Shared<vkc::PointCloud>> &message) {
-    auto point_cloud = message.payload.reader();
-
-    // Retrieve the point cloud data
-    unsigned char* pcData = const_cast<unsigned char*>(point_cloud.getPoints().asBytes().begin());
-    int pointBytes = static_cast<int>(point_cloud.getPointStride());
-
-    std::vector<int> fieldOffsets;
-    std::vector<sensor_msgs::msg::PointField> fields;
-    for (const auto& field : point_cloud.getFields())
-    {
-        auto fieldOffset = static_cast<int>(field.getOffset());
-        fieldOffsets.push_back(fieldOffset);
-        // std::cout <<field.getName().cStr() << " " << fieldOffset << std::endl;
-
-        sensor_msgs::msg::PointField pointField;
-        pointField.name = field.getName().cStr();
-        pointField.offset = fieldOffset;
-        pointField.count = 1;
-        switch (field.getType()) {
-            case vkc::Field::NumericType::FLOAT32: {
-                pointField.datatype = sensor_msgs::msg::PointField::FLOAT32;
-                break;
-            }
-            case vkc::Field::NumericType::FLOAT64: {
-                pointField.datatype = sensor_msgs::msg::PointField::FLOAT64;
-                break;
-            }
-            case vkc::Field::NumericType::UINT8: {
-                pointField.datatype = sensor_msgs::msg::PointField::UINT8;
-                break;
-            }
-            case vkc::Field::NumericType::UINT16: {
-                pointField.datatype = sensor_msgs::msg::PointField::UINT16;
-                break;
-            }
-            case vkc::Field::NumericType::UINT32: {
-                pointField.datatype = sensor_msgs::msg::PointField::UINT32;
-                break;
-            }
-            case vkc::Field::NumericType::UINT64: {
-                RCLCPP_WARN(driver_.get_logger(), "UINT64 is not supported in ROS2 PointCloud2");
-                return vkc::ReceiverStatus::Closed;
-                break;
-            }
-            case vkc::Field::NumericType::INT8: {
-                pointField.datatype = sensor_msgs::msg::PointField::INT8;
-                break;
-            }
-            case vkc::Field::NumericType::INT16: {
-                pointField.datatype = sensor_msgs::msg::PointField::INT16;
-                break;
-            }
-            case vkc::Field::NumericType::INT32: {
-                pointField.datatype = sensor_msgs::msg::PointField::INT32;
-                break;
-            }
-            case vkc::Field::NumericType::INT64: {
-                RCLCPP_WARN(driver_.get_logger(), "INT64 is not supported in ROS2 PointCloud2");
-                return vkc::ReceiverStatus::Closed;
-                break;
-            }
-        }
-        fields.push_back(pointField);
-    }
-
-    auto pointsCount = point_cloud.getPoints().asBytes().size() / pointBytes;
-
-    auto pc2_msg_ = std::make_shared<sensor_msgs::msg::PointCloud2>();
-    pc2_msg_->fields = fields;
-    pc2_msg_->height = 1;
-    pc2_msg_->width = pointsCount;
-    pc2_msg_->is_bigendian = false;
-    pc2_msg_->point_step = pointBytes;
-    pc2_msg_->row_step = pointBytes * pointsCount;
-    pc2_msg_->is_dense = false;
-    pc2_msg_->data.resize(pc2_msg_->row_step);
-    memcpy(pc2_msg_->data.data(), pcData, pc2_msg_->row_step);
-    pc2_msg_->header.stamp = rclcpp::Time(
-        point_cloud.getHeader().getStampMonotonic() + point_cloud.getHeader().getClockOffset());
-    pc2_msg_->header.frame_id = driver_.odometry_frame_;
-    publisher_->publish(*pc2_msg_);
-    return vkc::ReceiverStatus::Open;
-}
-
 vkc::VkRos2Driver::VkRos2Driver(const rclcpp::NodeOptions &options)
     : Node("vk_ros2_driver", options),
       node_handle_(std::shared_ptr<VkRos2Driver>(this, [](auto *) {})),
       visualkit(std::move(vkc::VisualKit::create(std::nullopt))),
       it_(node_handle_) {
 
-    this->declare_parameter("pointcloud_topics", rclcpp::PARAMETER_STRING_ARRAY);
     this->declare_parameter("imu_topics", rclcpp::PARAMETER_STRING_ARRAY);
     this->declare_parameter("odometry_topics", rclcpp::PARAMETER_STRING_ARRAY);
     this->declare_parameter("image_topics", rclcpp::PARAMETER_STRING_ARRAY);
@@ -292,7 +206,6 @@ vkc::VkRos2Driver::VkRos2Driver(const rclcpp::NodeOptions &options)
     this->declare_parameter<std::string>("odometry_frame", "odom");
     this->declare_parameter<std::string>("base_link_frame", "base_link");
     
-    pointcloud_topics_ = this->get_parameter_or<std::vector<std::string>>("pointcloud_topics", {});
     imu_topics_ = this->get_parameter_or<std::vector<std::string>>("imu_topics", {});
     odometry_topics_ = this->get_parameter_or<std::vector<std::string>>("odometry_topics", {});
     image_topics_ = this->get_parameter_or<std::vector<std::string>>("image_topics", {});
@@ -308,11 +221,6 @@ vkc::VkRos2Driver::VkRos2Driver(const rclcpp::NodeOptions &options)
     vkc::installLoggingCallback(std::bind(
         &vkc::VkRos2Driver::log_cb, this, std::placeholders::_1, std::placeholders::_2));
 
-    for (const auto& topic : pointcloud_topics_) {
-        pointcloud_publishers_[topic] = this->create_publisher<sensor_msgs::msg::PointCloud2>(topic, 10);
-        visualkit->source().install(topic, std::make_unique<vkc::PointCloudReceiver>(
-            *this, pointcloud_publishers_[topic]));
-    }
     for (const auto& topic : imu_topics_) {
         imu_publishers_[topic] = this->create_publisher<sensor_msgs::msg::Imu>(topic, 10);
         visualkit->source().install(topic, std::make_unique<vkc::ImuReceiver>(

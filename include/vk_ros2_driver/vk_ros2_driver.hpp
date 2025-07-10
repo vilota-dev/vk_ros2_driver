@@ -29,7 +29,6 @@ namespace vkc
 {
     class ImuReceiver;
     class OdometryReceiver;
-    class PointCloudReceiver;
     class DisparityReceiver;
     class ImageReceiver;
 
@@ -41,7 +40,6 @@ namespace vkc
 
         friend class ImuReceiver;
         friend class OdometryReceiver;
-        friend class PointCloudReceiver;
         friend class DisparityReceiver;
         friend class ImageReceiver;
     protected:
@@ -50,9 +48,6 @@ namespace vkc
         void log_cb(vkc::LogLevel level, std::string_view message);
 
         rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odometry_publisher_;
-        rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_publisher_;
-        rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_inflated_publisher_;
-        rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_ror_publisher_;
         image_transport::Publisher image_publisher_;
         image_transport::Publisher left_disparity_publisher_;
         image_transport::Publisher right_disparity_publisher_;
@@ -60,7 +55,6 @@ namespace vkc
         std::shared_ptr<tf2_ros::StaticTransformBroadcaster> static_broadcaster_;
         std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
         std::shared_ptr<rclcpp::TimerBase> publish_timer_;
-        std::vector<std::string> pointcloud_topics_;
         std::vector<std::string> imu_topics_;
         std::vector<std::string> odometry_topics_;
         std::vector<std::string> image_topics_;
@@ -74,7 +68,6 @@ namespace vkc
         std::map<std::string, image_transport::Publisher> disparity_publishers_;
         std::map<std::string, rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr> imu_publishers_;
         std::map<std::string, rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr> odometry_publishers_;
-        std::map<std::string, rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr> pointcloud_publishers_;
         std::map<std::string, rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr> camera_info_publishers_;
     };
 
@@ -137,19 +130,6 @@ namespace vkc
     private:
         const VkRos2Driver& driver_;
         rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr publisher_;
-    };
-
-    class PointCloudReceiver : public vkc::Receiver<vkc::PointCloud>
-    {
-    public:
-        inline PointCloudReceiver(const VkRos2Driver& driver,
-                                  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher)
-            : Receiver(), driver_(driver), publisher_(publisher) {}
-
-        vkc::ReceiverStatus handle(const vkc::Message<vkc::Shared<vkc::PointCloud>> &message);
-    private:
-        const VkRos2Driver& driver_;
-        rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_;
     };
 
 } // namespace vkc

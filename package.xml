@@ -3,10 +3,10 @@
   <name>vk_ros2_driver</name>
   <version>0.0.1</version>
   <description>
-    ROS2 driver package for receiving data from vk_sdk.
+    ROS2 example driver for receiving data from vk_sdk.
   </description>
   <author>Vilota Pte Ltd</author>
-  <maintainer email="xingyu@vilota.ai">vilota</maintainer>
+  <maintainer email="raghav@vilota.ai">vilota</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
